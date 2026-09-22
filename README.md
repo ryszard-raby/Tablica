@@ -59,3 +59,17 @@ Sass nie wygeneruje dla nich osobnego pliku CSS.
 Konfiguracja `base: './'` generuje względne ścieżki do JavaScript, CSS i ikony, dzięki czemu aplikacja działa również pod adresem `https://uzytkownik.github.io/nazwa-repozytorium/`.
 Nie publikuj plików źródłowych jako gotowej strony — GitHub Pages musi otrzymać zawartość `dist` po wykonaniu `npm run build`.
 Workflow korzysta z Node.js 24 oraz `npm ci` (w repozytorium musi być `package-lock.json`).
+
+## PWA — instalacja i praca offline
+
+Aplikacja ma manifest, ikony instalacyjne i service worker generowany przez `vite-plugin-pwa` podczas `npm run build`.
+Konfiguracja bazuje na dokumentacji: https://vite-pwa-org.netlify.app/guide/.
+
+- Po wdrożeniu na GitHub Pages otwórz stronę online i poczekaj na jej pełne załadowanie. Potem tablica oraz konfiguracja działają offline.
+- W przeglądarce obsługującej instalację wybierz z menu opcję instalacji aplikacji / dodania do ekranu głównego.
+- Na iPadzie w Safari użyj **Udostępnij → Do ekranu początkowego**.
+- Zainstalowana aplikacja uruchamia się w osobnym oknie. Przycisk **Pełny ekran** nadal służy do wyświetlenia samej tablicy na urządzeniach obsługujących Fullscreen API.
+- Ustawienia pozostają zapisane lokalnie na danym urządzeniu. Zapowiedzi głosowe zależą od dostępnych głosów systemowych.
+- Po pobraniu nowej wersji zamknij wszystkie okna i karty aplikacji, a następnie otwórz ją ponownie. Aktualizacja nie wymusza odświeżenia podczas zabawy.
+
+PWA wymaga HTTPS (GitHub Pages zapewnia HTTPS) lub localhost. Do testów użyj `npm run build` i `npm run preview`; service worker jest celowo wyłączony w trybie `npm run dev`.

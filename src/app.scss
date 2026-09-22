@@ -55,3 +55,15 @@
     font-size: 11px;
   }
 }
+
+.departure-board tr.departed {
+  background: #192a39;
+  .departure-time, .destination strong { color: #b5c3ce; }
+  .departed-status {
+    display: inline-block;
+    padding: 6px 9px;
+    border: 1px solid #486259;
+    border-radius: 4px;
+    color: #b7d4c6;
+  }
+}
