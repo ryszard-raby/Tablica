@@ -73,3 +73,13 @@ Konfiguracja bazuje na dokumentacji: https://vite-pwa-org.netlify.app/guide/.
 - Po pobraniu nowej wersji zamknij wszystkie okna i karty aplikacji, a następnie otwórz ją ponownie. Aktualizacja nie wymusza odświeżenia podczas zabawy.
 
 PWA wymaga HTTPS (GitHub Pages zapewnia HTTPS) lub localhost. Do testów użyj `npm run build` i `npm run preview`; service worker jest celowo wyłączony w trybie `npm run dev`.
+
+## Perony i zajętość stacji
+
+W ustawieniach każda stacja ma liczbę peronów (1–99). Domyślnie: Głogów — 1, Lubin — 2, Wrocław Główny — 3. Ustawienia peronów zapisują się razem z siecią.
+
+Rozkład rezerwuje osobny peron dla każdego pociągu. Następny kurs zaczyna się na peronie zakończenia poprzedniego; zajęte stacje docelowe i pośrednie nie są dostępne dla innych pociągów. Kolumna „Perony” pokazuje **odjazd → przyjazd**.
+
+Model zabawy zakłada zakończenie przejazdu przed kolejnym odjazdem. Aplikacja nie wykrywa rzeczywistego położenia pociągów. Po uruchomieniu strony, losowaniu nowego rozkładu lub zapisaniu ustawień ustaw pociągi według sekcji „Ustawienie początkowe pociągów” pod tablicą. W sieci musi być przynajmniej o jeden peron więcej niż pociągów, aby możliwy był ruch.
+
+Przy migracji wcześniejszych ustawień stacje otrzymują domyślne liczby peronów (nowe nazwy — 1). Jeśli stara flota jest większa niż dostępna pojemność, pierwsza stacja otrzymuje dodatkowe perony, aby zachować zapisane pociągi i umożliwić ruch; liczby można następnie zmienić w ustawieniach.

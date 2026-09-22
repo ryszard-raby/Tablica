@@ -74,3 +74,18 @@
 .speech-warning button { flex-shrink: 0; }
 button:disabled { opacity: .55; cursor: not-allowed; }
 :root:fullscreen .speech-warning { position: fixed; bottom: 60px; left: 16px; right: 16px; z-index: 10; }
+
+.station-platforms { display: grid; gap: 10px; margin-top: 16px; }
+.station-platforms label { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.station-platforms label>span:first-child { flex: 1; }
+.station-platforms input { width: 68px; }
+.station-platforms label>span:last-child { color: #778077; }
+.platform { white-space: nowrap; }
+.platform small { color: #899bb2; font-size: 10px; }
+.platform>span { width: 23px; }
+.initial-positions { margin-top: 15px; padding: 15px 20px; border: 1px solid #e0e5dc; border-radius: 8px; font-size: 12px; color: #536052; }
+.initial-positions summary { cursor: pointer; font-weight: 600; }
+.initial-positions p { margin-top: 12px; line-height: 1.6; }
+.initial-positions ul { display: flex; flex-wrap: wrap; gap: 10px 28px; padding-left: 18px; }
+:root:fullscreen .initial-positions { display: none; }
+@media(max-width:600px) { .platform>span { width: 17px; height: 25px; font-size: 13px; } .platform small { font-size: 8px; } }

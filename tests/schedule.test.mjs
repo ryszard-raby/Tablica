@@ -1,82 +1,106 @@
-import assert from 'node:assert/strict'
+﻿import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import vm from 'node:vm'
 import test from 'node:test'
 import ts from 'typescript'
 
-// Exercise the actual generator with reproducible random values.
 const source = fs.readFileSync(new URL('../src/app.tsx', import.meta.url), 'utf8')
 const core = source.slice(source.indexOf('type Config'), source.indexOf('const time='))
 const compiled = ts.transpile(core, { target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.None })
-function setup() {
-  let calls = 0
+function setup(seed = 42) {
   const randomMath = Object.create(Math)
-  // Each departure draws a train, then a route. Cover every train repeatedly.
-  randomMath.random = () => (Math.floor(calls++ / 2) % 3 + 0.5) / 3
-  return vm.runInNewContext(compiled + '; ({ generate, defaults })', { Math: randomMath })
+  randomMath.random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296 }
+  return vm.runInNewContext(compiled + '; ({ generate, defaults, createPositions, normalizeConfig })', { Math: randomMath })
 }
 
-test('successive single-row refills use the whole fleet, even after the initial board expires', () => {
-  const { generate, defaults } = setup()
-  const positions = new Map()
+// Replay every movement against an independent occupancy ledger.
+function replay(config, rows, positions) {
+  for (const row of rows) {
+    const origin = positions.get(row.train)
+    assert.equal(row.route[0], origin.station)
+    assert.equal(row.platform, origin.platform)
+    assert.notEqual(row.route.at(-1), origin.station)
+    for (let i = 1; i < row.route.length; i++) {
+      const station = row.route[i]
+      assert.ok(config.links.some(link => link.includes(row.route[i - 1]) && link.includes(station)))
+      const occupants = [...positions.values()].filter(p => p.station === station)
+      assert.ok(occupants.length < config.platforms[station], `Full station: ${station}`)
+    }
+    positions.set(row.train, { station: row.route.at(-1), platform: row.arrivalPlatform })
+    const occupied = new Set()
+    for (const p of positions.values()) {
+      assert.ok(p.platform >= 1 && p.platform <= config.platforms[p.station])
+      const key = JSON.stringify([p.station, p.platform])
+      assert.ok(!occupied.has(key), `Duplicate berth: ${key}`)
+      occupied.add(key)
+    }
+  }
+}
+
+test('platform limits and route continuity hold over 500 refills and all trains run', () => {
+  const { generate, defaults, createPositions } = setup()
+  const positions = createPositions(defaults)
+  const actual = new Map(positions)
   let rows = generate(defaults, 0, 9, positions)
-  const added = []
-  for (let i = 0; i < 90; i++) {
-    const now = rows[0].time
-    const rest = rows.filter(row => row.time > now)
-    const previousPositions = new Map(positions)
-    const fresh = generate(defaults, rest.at(-1)?.time || now, 9 - rest.length, positions)
+  replay(defaults, rows, actual)
+  const used = new Set()
+  for (let i = 0; i < 500; i++) {
+    const rest = rows.slice(1)
+    const fresh = generate(defaults, rest.at(-1).time, 1, positions)
     assert.equal(fresh.length, 1)
-    assert.equal(fresh[0].route[0], previousPositions.get(fresh[0].train))
-    assert.notEqual(fresh[0].route.at(-1), previousPositions.get(fresh[0].train))
     assert.equal(fresh[0].time - rest.at(-1).time, 300000)
-    added.push(fresh[0].train)
+    replay(defaults, fresh, actual)
+    used.add(fresh[0].train)
     rows = [...rest, ...fresh]
     assert.equal(rows.length, 9)
   }
-  assert.deepEqual([...new Set(added)].sort(), ['DB', 'ICE', 'SWI'])
-  for (const train of defaults.trains) assert.equal(added.filter(t => t === train).length, 30)
+  assert.deepEqual([...used].sort(), ['DB', 'ICE', 'SWI'])
 })
 
-test('single-train fleets and rebuilding after a long pause remain valid', () => {
-  const { generate, defaults } = setup()
-  const config = { ...defaults, trains: ['DB'] }
-  const rows = generate(config, 3600000, 9)
-  assert.equal(rows.length, 9)
-  assert.ok(rows.every(row => row.train === 'DB' && row.time > 3600000))
-  for (const row of rows) {
-    assert.ok(row.route.length >= 2)
-    for (let i = 1; i < row.route.length; i++) {
-      assert.ok(config.links.some(link => link.includes(row.route[i - 1]) && link.includes(row.route[i])))
-    }
-  }
-  for (let i = 1; i < rows.length; i++) {
-    assert.equal(rows[i].route[0], rows[i - 1].route.at(-1))
-    assert.notEqual(rows[i].route.at(-1), rows[i - 1].route.at(-1))
+test('an occupied single-platform destination is unavailable until its train leaves', () => {
+  const { generate, defaults, createPositions } = setup()
+  const positions = createPositions(defaults)
+  const actual = new Map(positions)
+  const rows = generate(defaults, 0, 100, positions)
+  const single = defaults.stations.find(s => defaults.platforms[s] === 1)
+  assert.equal([...actual.values()].filter(p => p.station === single).length, 1)
+  replay(defaults, rows, actual)
+})
+
+test('full intermediate stations must be cleared before a train can pass', () => {
+  const { generate, defaults, createPositions } = setup()
+  const config = { ...defaults, stations: ['A','B','C'], links: [['A','B'],['B','C']], trains: ['ICE','DB'], platforms: {A:1,B:1,C:1} }
+  const positions = createPositions(config)
+  const actual = new Map(positions)
+  const rows = generate(config, 0, 100, positions)
+  assert.equal(rows[0].train, 'DB')
+  assert.equal(rows.length, 100)
+  replay(config, rows, actual)
+})
+
+test('one spare platform is enough, including after a long pause', () => {
+  const { generate, defaults, createPositions } = setup()
+  const config = { ...defaults, trains: ['A','B','C','D','E'] }
+  const positions = createPositions(config)
+  const actual = new Map(positions)
+  for (const start of [0,3600000]) {
+    const rows = generate(config, start, 100, positions)
+    assert.equal(rows.length, 100)
+    assert.ok(rows.every(r => r.time > start))
+    replay(config, rows, actual)
   }
 })
 
-test('each train continues its route across other trains and long pauses', () => {
-  const { generate, defaults } = setup()
-  const positions = new Map()
-  const first = generate(defaults, 0, 9, positions)
-  const afterPause = generate(defaults, 3600000, 9, positions)
-  const lastStops = new Map()
-  for (const row of [...first, ...afterPause]) {
-    if (lastStops.has(row.train)) {
-      assert.equal(row.route[0], lastStops.get(row.train))
-      assert.notEqual(row.route.at(-1), lastStops.get(row.train))
-    }
-    lastStops.set(row.train, row.route.at(-1))
-  }
+test('legacy settings retain the fleet and receive station platform defaults', () => {
+  const { defaults, normalizeConfig } = setup()
+  const { platforms, ...legacy } = defaults
+  assert.deepEqual(JSON.parse(JSON.stringify(normalizeConfig(legacy).platforms)), JSON.parse(JSON.stringify(platforms)))
+  const expanded = normalizeConfig({ ...legacy, trains: Array.from({ length: 8 }, (_,i) => `T${i}`) })
+  assert.ok(Object.values(expanded.platforms).reduce((a,b)=>a+b,0) > expanded.trains.length)
 })
 
-test('a train absent for a whole board keeps its last destination', () => {
-  const { generate, defaults } = setup()
-  const positions = new Map()
-  const original = generate({ ...defaults, trains: ['ICE'] }, 0, 1, positions)[0]
-  generate({ ...defaults, trains: ['DB'] }, original.time, 20, positions)
-  const returning = generate({ ...defaults, trains: ['ICE'] }, 9000000, 1, positions)[0]
-  assert.equal(returning.route[0], original.route.at(-1))
-  assert.notEqual(returning.route.at(-1), original.route.at(-1))
+test('a completely occupied network does not create conflicting departures', () => {
+  const { generate, defaults, createPositions } = setup()
+  const config = { ...defaults, stations: ['A','B'], links: [['A','B']], trains:['ICE','DB'], platforms:{A:1,B:1} }
+  assert.equal(generate(config,0,9,createPositions(config)).length,0)
 })
