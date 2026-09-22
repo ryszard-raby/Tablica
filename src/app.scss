@@ -67,3 +67,10 @@
     color: #b7d4c6;
   }
 }
+
+.speech-test { margin-top: 12px; }
+.settings-grid p.speech-error { color: #a63333; }
+.speech-warning { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; margin-bottom: 18px; border: 1px solid #d7a870; background: #fff5e6; border-radius: 6px; font-size: 12px; }
+.speech-warning button { flex-shrink: 0; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+:root:fullscreen .speech-warning { position: fixed; bottom: 60px; left: 16px; right: 16px; z-index: 10; }
