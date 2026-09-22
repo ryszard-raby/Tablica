@@ -48,3 +48,14 @@ więc importujemy je bez ścieżek relatywnych:
 
 Partiale (pliki pomocnicze) nazywamy z podkreśleniem, np. `_variables.scss` —
 Sass nie wygeneruje dla nich osobnego pliku CSS.
+
+## Publikowanie na GitHub Pages
+
+1. W repozytorium otwórz **Settings → Pages → Build and deployment** i ustaw **Source: GitHub Actions**.
+2. Wyślij zmiany na gałąź `main`. Workflow `.github/workflows/pages.yml` zbuduje aplikację i opublikuje katalog `dist`.
+3. W zakładce **Actions** poczekaj na zakończenie `Build and Deploy`. Workflow można również uruchomić przyciskiem **Run workflow**.
+4. Otwórz adres podany w **Settings → Pages**.
+
+Konfiguracja `base: './'` generuje względne ścieżki do JavaScript, CSS i ikony, dzięki czemu aplikacja działa również pod adresem `https://uzytkownik.github.io/nazwa-repozytorium/`.
+Nie publikuj plików źródłowych jako gotowej strony — GitHub Pages musi otrzymać zawartość `dist` po wykonaniu `npm run build`.
+Workflow korzysta z Node.js 24 oraz `npm ci` (w repozytorium musi być `package-lock.json`).
